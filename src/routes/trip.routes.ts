@@ -14,10 +14,20 @@ const router = Router();
       verifyToken,
       trip.getDetailTripById
     )
+    router.delete(
+      '/trip/delete-trip/:id',
+      verifyToken,
+      trip.deleteTripById
+    )
     router.get(
       '/trip/get-members-trip-by-id/:id',
       verifyToken,
       trip.getMemberTripById
+    )
+    router.get(
+      '/trip/get-location-members-trip-by-id/:id',
+      verifyToken,
+      trip.getLocationAllMemberTripById
     )
     router.get(
       '/trip/get-trip-by-id-extra/:id',
@@ -32,6 +42,7 @@ const router = Router();
     router.post('/trip/join-trip', verifyToken, trip.joinTripByUser) 
     router.post('/trip/save-trip', verifyToken, trip.saveAndUnSaveTripByUser) 
     router.post('/trip/add-role-user', verifyToken, trip.addRoleForUserOfTrip)
+    router.post('/trip/update-status', verifyToken, trip.updateStatusOfTrip)
     router.post('/trip/rate-trip', verifyToken, trip.addRateTrip)
     router.get(
       '/trip/get-list-saved-trips',

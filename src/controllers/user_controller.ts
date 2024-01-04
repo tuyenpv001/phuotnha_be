@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { RowDataPacket } from 'mysql2';
 import { connect } from '../database/connection';
-import { IChangePassword, IUpdateProfile, User, INewFriend, IAcceptFollowerRequest } from '../interfaces/user.interface';
+import { IChangePassword, IUpdateProfile, User, INewFriend, IAcceptFollowerRequest, ILocationUser } from '../interfaces/user.interface';
 
 export const createUser = async ( req: Request, res: Response ): Promise<Response> => {
 
@@ -554,24 +554,79 @@ export const deleteFollowers = async (req: Request, res: Response): Promise<Resp
 
 }
 
-export const updateOnlineUser = async ( uid: string) => {
+export const updateOnlineUser = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id
+    const conn = await connect()
 
-    const conn = await connect();
+    await conn.query('UPDATE users SET is_online = true WHERE person_uid = ?', [
+      id,
+    ])
 
-    await conn.query('UPDATE users SET is_online = true WHERE person_uid = ?', [ uid ]);
+    conn.end()
+    return res.json({
+      resp: true,
+      message: 'status online',
+    })
+  } catch (error) {
+    return res.json({
+      resp: false,
+      message: error,
+    })
+  }
+}
 
-    conn.end();
+export const updateOfflineUser = async (req: Request, res: Response) => {
+
+    try {
+        const id = req.params.id
+            const conn = await connect()
+
+            await conn.query(
+              'UPDATE users SET is_online = false WHERE person_uid = ?',
+              [id]
+            )
+
+            conn.end()
+             return res.json({
+               resp: true,
+               message: 'status offline',
+             })
+
+    } catch (error) {
+        return res.json({
+          resp: false,
+          message: error,
+        }) 
+    }
 
 }
 
-export const updateOfflineUser = async ( uid: string) => {
 
-    const conn = await connect();
+export const updateLocationUser = async (req: Request, res: Response)=> {
+    
+    try {
+      const { lat,lng }: ILocationUser = req.body
+      const conn = await connect()
+      console.log(lat, lng)
 
-    await conn.query('UPDATE users SET is_online = false WHERE person_uid = ?', [ uid ]);
+        await conn.query(
+          'UPDATE users SET lat= ?, lng = ? WHERE person_uid = ?',
+          [lat,lng,req.idPerson]
+        )
+     
 
-    conn.end();
+      conn.end()
 
+      return res.json({
+        resp: true,
+        message: 'updated location',
+      })
+    } catch (err) {
+      return res.status(500).json({
+        resp: false,
+        message: err,
+      })
+    }
 }
-
 

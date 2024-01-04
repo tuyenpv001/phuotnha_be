@@ -15,10 +15,12 @@ export const login = async ( req: Request, res: Response): Promise<Response> => 
         const { email, password }: SignIn = req.body;
 
         const conn = await connect();
-
+        console.log(email,password);
+        
         // Check is exists Email on database 
         const [verifyUserdb] = await conn.query<RowDataPacket[0]>('SELECT email, passwordd, email_verified FROM users WHERE email = ?', [email]);
-
+        console.log(verifyUserdb);
+        
         if(verifyUserdb.length == 0){
             return res.status(401).json({
                 resp: false,

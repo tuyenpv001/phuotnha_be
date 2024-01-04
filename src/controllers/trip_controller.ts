@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { connect } from '../database/connection';
-import { ILikePost, INewComment, INewPost, ISavePost, IUidComment } from '../interfaces/post.interface';
+import { ILikePost, INewComment, IUidComment } from '../interfaces/post.interface';
 import { RowDataPacket } from 'mysql2';
-import { ICommentTrip, IJoinTrip, INewTrip, IRoleTrip, ISaveTrip } from '../interfaces/trip.interface';
+import { ICommentTrip, IJoinTrip, IMemberLocation, INewTrip, IRoleTrip, ISaveTrip, IStatusTrip } from '../interfaces/trip.interface';
+import { Location, haversine } from '../lib/haversine';
 
 
 export const createNewTrip = async (req: Request, res: Response): Promise<Response> => {
@@ -11,7 +12,6 @@ export const createNewTrip = async (req: Request, res: Response): Promise<Respon
     try {
         console.log(req.body, req.idPerson);
         
-
         const { trip_title, trip_description,
             trip_from,trip_to,trip_date_start,trip_date_end
             ,trip_member,trip_status,trip_schedule }: INewTrip = req.body
@@ -27,13 +27,33 @@ export const createNewTrip = async (req: Request, res: Response): Promise<Respon
           console.log(checkMatch[0]);
           console.log(checkMatch[0][0]);
           console.log(checkMatch[0][1]);
-          
-        if (checkMatch[0][0]?.countTripCreated !== 0 && checkMatch[0][1]?.countTripJoined) {
+          console.log(checkMatch[0][0][0]?.countTripCreated)
+          console.log(checkMatch[0][1][0]?.countTripJoined)
+           if (
+             checkMatch[0][0][0]?.countTripCreated !== 0 &&
+             checkMatch[0][1][0]?.countTripJoined !== 0
+           ) {
+             return res.status(500).json({
+               resp: false,
+               message:
+                 'Lỗi đã trùng với chuyến đi đã tạo/ chuyến đi đã tham gia',
+             })
+           } 
+        if (checkMatch[0][0][0]?.countTripCreated !== 0) {
           return res.status(500).json({
             resp: false,
             message: 'Lỗi đã trùng với chuyến đi đã tạo',
           })
-        } else {
+        }
+        if (checkMatch[0][1][0]?.countTripJoined !== 0) {
+          return res.status(500).json({
+            resp: false,
+            message: 'Lỗi đã trùng với chuyến đi đã tham gia',
+          })
+        } 
+       
+        
+
           const uidTrip = uuidv4()
 
           await conn.query(
@@ -83,7 +103,7 @@ export const createNewTrip = async (req: Request, res: Response): Promise<Respon
             resp: true,
             message: 'Trip created success',
           })
-        }
+        
         
   
     } catch(err) {
@@ -195,6 +215,32 @@ export const getDetailTripById = async (
     })
   }
 }
+export const deleteTripById = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const conn = await connect()
+    const { id } = req.params
+    const deleteTrip = await conn.query<RowDataPacket[]>(
+      `CALL SP_DELETE_TRIP_BY_ID(?);`,
+      [id]
+    )
+
+    await conn.end()
+   
+    return res.json({
+      resp: true,
+      message: 'Delete trip success',
+     
+    })
+  } catch (err) {
+    return res.status(500).json({
+      resp: false,
+      message: err,
+    })
+  }
+}
 export const getMemberTripById = async (
   req: Request,
   res: Response
@@ -245,7 +291,6 @@ export const getDetailExtraTripById = async (
       [id, req.idPerson]
     )
     
-
     const imagesdb = postdb[0][0].testing
 
     await conn.end()
@@ -307,7 +352,8 @@ export const saveAndUnSaveTripByUser = async (req: Request, res: Response): Prom
 
         const { trip_uid,type}: ISaveTrip = req.body;
         const conn = await connect();
-
+        console.log(trip_uid, type);
+        
         if(type === 'save') {
           await conn.query('INSERT INTO trip_save(uid, trip_uid, person_uid) VALUE (?,?,?)', [ uuidv4(), trip_uid, req.idPerson]);
         }
@@ -345,17 +391,40 @@ export const joinTripByUser = async (req: Request, res: Response): Promise<Respo
         console.log(checkMatch[0])
         console.log(checkMatch[0][0])
         console.log(checkMatch[0][1])
+          if (
+            checkMatch[0][0][0]?.countTripCreated !== 0 &&
+            checkMatch[0][1][0]?.countTripJoined !== 0
+          ) {
+            return res.status(500).json({
+              resp: false,
+              message:
+                'Lỗi đã trùng với chuyến đi đã tạo/ chuyến đi đã tham gia',
+            })
+          }
+          if (checkMatch[0][0][0]?.countTripCreated !== 0) {
+            return res.status(500).json({
+              resp: false,
+              message: 'Lỗi đã trùng với chuyến đi đã tạo',
+            })
+          }
+          if (checkMatch[0][1][0]?.countTripJoined !== 0) {
+            return res.status(500).json({
+              resp: false,
+              message: 'Lỗi đã trùng với chuyến đi đã tham gia',
+            })
+          } 
+       
 
-        if (
-          checkMatch[0][0]?.countTripCreated !== 0 &&
-          checkMatch[0][1]?.countTripJoined
-        ) {
-          conn.end()
-          return res.status(500).json({
-            resp: false,
-            message: 'Lỗi đã trùng với chuyến đi khác.',
-          })
-        } else {
+        // if (
+        //   checkMatch[0][0]?.countTripCreated !== 0 &&
+        //   checkMatch[0][1]?.countTripJoined
+        // ) {
+        //   conn.end()
+        //   return res.status(500).json({
+        //     resp: false,
+        //     message: 'Lỗi đã trùng với chuyến đi khác.',
+        //   })
+        // } else {
           if (type === 'join') {
             await conn.query(
               'INSERT INTO trip_members(uid, trip_uid, person_uid) VALUE (?,?,?)',
@@ -375,7 +444,7 @@ export const joinTripByUser = async (req: Request, res: Response): Promise<Respo
              resp: true,
              message: 'Joined Trip',
            })
-        }
+        // }
 
     } catch(err) {
         return res.status(500).json({
@@ -436,6 +505,35 @@ export const addRoleForUserOfTrip = async (
     return res.json({
       resp: true,
       message: 'Added role Trip',
+    })
+  } catch (err) {
+    return res.status(500).json({
+      resp: false,
+      message: err,
+    })
+  }
+}
+
+export const updateStatusOfTrip = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { trip_uid, status }: IStatusTrip = req.body
+    console.log(req.body)
+
+    const conn = await connect()
+
+    await conn.query('UPDATE trips SET trip_status = ? WHERE uid = ?', [
+      status,
+      trip_uid,
+    ])
+
+    conn.end()
+
+    return res.json({
+      resp: true,
+      message: 'Updated status Trip',
     })
   } catch (err) {
     return res.status(500).json({
@@ -638,15 +736,18 @@ export const getAllTripByUserID = async (req: Request, res: Response): Promise<R
 
         const conn = await connect();
 
-        const postsdb = await conn.query<RowDataPacket[]>(`CALL SP_GET_ALL_POST_BY_USER(?);`, [req.idPerson]);
+        const tripsdb = await conn.query<RowDataPacket[]>(`CALL SP_GET_ALL_TRIP_BY_USER(?);`, [req.idPerson]);
 
         conn.end();
 
+
+        console.log('Trip user: ',tripsdb[0][0])
+        
         return res.json({
-            resp: true,
-            message: 'Posts By User ID',
-            postUser: postsdb[0][0]
-        });
+          resp: true,
+          message: 'Trips By User ID',
+          trips: tripsdb[0][0],
+        })
 
     } catch(err) {
         return res.status(500).json({
@@ -706,7 +807,6 @@ export const addNewMessageTrip = async (
   conn.end()
 }
 
-
 export const getAllMessagesById = async (
   req: Request,
   res: Response
@@ -725,6 +825,77 @@ export const getAllMessagesById = async (
       resp: true,
       message: 'get all messages by trip id',
       listMessage: messagesdb[0][0],
+    })
+  } catch (err) {
+    return res.status(500).json({
+      resp: false,
+      message: err,
+    })
+  }
+}
+
+export const getLocationAllMemberTripById = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const conn = await connect()
+    const { id } = req.params
+    const result = await conn.query<RowDataPacket[]>(
+      `CALL SP_GET_LOCATION_ALL_MEMBER_BY_TRIP_ID(?);`,
+      [id]
+    )
+    
+    const leader = result[0][0][0];
+    const members = result[0][1] as IMemberLocation[];
+    console.log(leader, members);
+    
+    const locationLeader : Location = {
+      lat: leader?.lat,
+      lng: leader?.lng
+    } 
+
+    const memembersTemp = members.map((member: IMemberLocation) => {
+        const locationMember: Location = {
+          lat: member?.lat ?? 0,
+          lng: member?.lng ?? 0
+        }
+        const distance = haversine(locationLeader,locationMember);
+        if(distance > 1.5) {
+          return {
+            ...member,
+            type: 'danger',
+            message: "Lạc nhóm",
+          }
+        }
+        if(distance > 0.7 && distance <= 1.5) {
+          return {
+            ...member,
+            type: 'warning',
+            message: "Di chuyển xa nhóm",
+          }
+        }
+        return {
+          ...member,
+          type: 'normal',
+          message: 'An toàn'
+        }
+    })
+    
+
+    await conn.end()
+    // console.log(postdb)
+    console.log({
+      resp: true,
+      message: 'Get all location member trip',
+      leader,
+      memembersTemp,
+    })
+    return res.json({
+      resp: true,
+      message: 'Get all location member trip',
+      leader,
+      memembersTemp,
     })
   } catch (err) {
     return res.status(500).json({
