@@ -21,7 +21,6 @@ export const socketChatMessages = ( io: Server ) => {
 
         await updateOnlineUser( uidPerson );
 
-
         client.join( uidPerson );
 
         client.on('message-personal', async payload => {
@@ -48,6 +47,20 @@ export const socketChatMessages = ( io: Server ) => {
 
         nameSpaceChat.to(payload.to).emit('message-trip', payload)
         })
+
+        client.on('start-trip', async payload => {
+          console.log("start trip:",payload)
+
+          // await InsertListChat(payload.from, payload.to)
+
+          // await updateLastMessage(payload.to, payload.from, payload.message)
+
+        //   await addNewMessageTrip(payload.from, payload.to, payload.message)
+
+          nameSpaceChat.to(payload.to).emit('message-trip', payload)
+        })
+
+
 
         client.on('disconnect', async _ => {
 

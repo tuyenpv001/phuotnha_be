@@ -7,6 +7,9 @@ const router = Router();
 
     router.post('/user', user.createUser );
     router.get('/user/get-User-By-Id', verifyToken, user.getUserById );
+    router.put('/user/status-online/:id', verifyToken, user.updateOnlineUser);
+    router.put('/user/status-offline/:id', verifyToken, user.updateOfflineUser);
+    router.put('/user/location', verifyToken, user.updateLocationUser);
     router.get('/user/profile', verifyToken, user.getProfileUser );
     router.get('/user/verify-email/:code/:email', user.verifyEmail );
     // Middleware [ Token, image ]  - Profile Image required

@@ -58,3 +58,17 @@ export interface IRoleTrip {
   trip_uid: string
   trip_member_uid:  string
 }
+
+
+export interface IStatusTrip {
+  status: 'open' |'block'|'cancel'| 'pending'|'is_beginning'|'completed' | 'reopen'
+  trip_uid: string
+}
+
+export interface IMemberLocation {
+  lat: number | null,
+  lng: number | null,
+  image: string | null,
+  fullname: string | null,
+  isMember: number
+}

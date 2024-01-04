@@ -27,3 +27,7 @@ export interface IAcceptFollowerRequest {
     uidFriend: string,
     uidNotification: string
 }
+export interface ILocationUser {
+    lat: number
+    lng: number
+}
