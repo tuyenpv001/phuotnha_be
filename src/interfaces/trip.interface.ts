@@ -72,3 +72,55 @@ export interface IMemberLocation {
   fullname: string | null,
   isMember: number
 }
+
+
+
+export const mockData = [
+  {
+    lat: -30.0722165,
+    lng: -51.0969571,
+    image: 'avatar-default.png',
+    fullname: 'Văn Hào',
+    isMember: 1,
+    type: 'warning',
+    message: 'Di chuyển quá xa đoàn',
+    level: 2
+  },
+  {
+    lat:63.0709556,
+    lng:21.6602532,
+    image:"avatar-default.png",
+    fullname:"Nguyễn Tý",
+    isMember:1,
+    type:'info',
+    level: 1,
+    message: "An toàn"
+  },
+  {
+    lat:49.0525513,
+    lng:17.5271323,
+    image:"avatar-default.png",
+    fullname:"Tuấn Đạt",
+    isMember:1,
+    level: 0,
+    type:'off',
+    message:"offline"
+  },
+  {
+    lat:-30.0722165,
+    lng:-51.0969571,
+    image:"avatar-default.png",
+    fullname:"Văn Tuyển",
+    isMember:1,
+    type:'danger',
+    level: 3,
+    message:"Khẩn cấp"
+  },
+]
+
+/** Level
+ * 0: off
+ * 1: info
+ * 2: warning
+ * 3: danger
+ */

@@ -39,7 +39,12 @@ const router = Router();
       verifyToken,
       trip.getTripByIdPerson
     ) 
-    router.post('/trip/join-trip', verifyToken, trip.joinTripByUser) 
+    router.post('/trip/join-trip', verifyToken, trip.joinTripByUser)
+    router.post(
+      '/trip/change-status-trip',
+      verifyToken,
+      trip.updateStatusOfTrip
+    )
     router.post('/trip/save-trip', verifyToken, trip.saveAndUnSaveTripByUser) 
     router.post('/trip/add-role-user', verifyToken, trip.addRoleForUserOfTrip)
     router.post('/trip/update-status', verifyToken, trip.updateStatusOfTrip)

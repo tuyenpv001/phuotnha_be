@@ -3,8 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { connect } from '../database/connection';
 import { ILikePost, INewComment, IUidComment } from '../interfaces/post.interface';
 import { RowDataPacket } from 'mysql2';
-import { ICommentTrip, IJoinTrip, IMemberLocation, INewTrip, IRoleTrip, ISaveTrip, IStatusTrip } from '../interfaces/trip.interface';
+import { ICommentTrip, IJoinTrip, IMemberLocation, INewTrip, IRoleTrip, ISaveTrip, IStatusTrip, mockData } from '../interfaces/trip.interface';
 import { Location, haversine } from '../lib/haversine';
+import { addNotification } from './notifications_controller';
 
 
 export const createNewTrip = async (req: Request, res: Response): Promise<Response> => {
@@ -257,12 +258,6 @@ export const getMemberTripById = async (
 
     await conn.end()
     // console.log(postdb)
-    console.log({
-      resp: true,
-      message: 'Get member trip',
-      tripMembers: postdb[0][0],
-      imagesdb,
-    })
     return res.json({
       resp: true,
       message: 'Get members trip',
@@ -294,16 +289,6 @@ export const getDetailExtraTripById = async (
     const imagesdb = postdb[0][0].testing
 
     await conn.end()
-    console.log(postdb)
-    console.log({
-      resp: true,
-      message: 'Get detail trips',
-      trips: postdb[0][0],
-      images: postdb[0][1],
-      tripRecommends: postdb[0][2],
-      tripMembers: postdb[0][3],
-      imagesdb,
-    })
     return res.json({
       resp: true,
       message: 'Get detail trips',
@@ -388,9 +373,6 @@ export const joinTripByUser = async (req: Request, res: Response): Promise<Respo
           'CALL SP_CHECK_DUPLICATE_TRIP(?,?,?)',
           [req.idPerson, date_start, date_end]
         )
-        console.log(checkMatch[0])
-        console.log(checkMatch[0][0])
-        console.log(checkMatch[0][1])
           if (
             checkMatch[0][0][0]?.countTripCreated !== 0 &&
             checkMatch[0][1][0]?.countTripJoined !== 0
@@ -415,21 +397,12 @@ export const joinTripByUser = async (req: Request, res: Response): Promise<Respo
           } 
        
 
-        // if (
-        //   checkMatch[0][0]?.countTripCreated !== 0 &&
-        //   checkMatch[0][1]?.countTripJoined
-        // ) {
-        //   conn.end()
-        //   return res.status(500).json({
-        //     resp: false,
-        //     message: 'Lỗi đã trùng với chuyến đi khác.',
-        //   })
-        // } else {
           if (type === 'join') {
             await conn.query(
               'INSERT INTO trip_members(uid, trip_uid, person_uid) VALUE (?,?,?)',
               [uuidv4(), trip_uid, req.idPerson]
             )
+            await addNotification({type: 'join',personSource: req.idPerson,postOrTripUid: trip_uid})
           }
 
           if (type === 'cancel') {
@@ -758,54 +731,54 @@ export const getAllTripByUserID = async (req: Request, res: Response): Promise<R
 
 }
 
-export const InsertListChatTrip = async (uidSource: string, uidTarget: string) => {
-  const conn = await connect()
+// export const InsertListChatTrip = async (uidSource: string, uidTarget: string) => {
+//   const conn = await connect()
 
-  const verifyExistsSourceone = await conn.query<RowDataPacket[]>(
-    'SELECT COUNT(uid_list_chat) AS chat FROM list_chats WHERE source_uid = ? AND target_uid = ? LIMIT 1',
-    [uidSource, uidTarget]
-  )
+//   const verifyExistsSourceone = await conn.query<RowDataPacket[]>(
+//     'SELECT COUNT(uid) AS chat FROM  WHERE source_uid = ? AND target_uid = ? LIMIT 1',
+//     [uidSource, uidTarget]
+//   )
 
-  if (verifyExistsSourceone[0][0].chat == 0) {
-    await conn.query(
-      'INSERT INTO list_chats (uid_list_chat, source_uid, target_uid) VALUE (?,?,?)',
-      [uuidv4(), uidSource, uidTarget]
-    )
-  }
+//   if (verifyExistsSourceone[0][0].chat == 0) {
+//     await conn.query(
+//       'INSERT INTO list_chats (uid_list_chat, source_uid, target_uid) VALUE (?,?,?)',
+//       [uuidv4(), uidSource, uidTarget]
+//     )
+//   }
 
-  conn.end()
-}
+//   conn.end()
+// }
 
-export const updateLastMessageTrip = async (
-  uidTarget: string,
-  uidPerson: string,
-  message: string
-) => {
-  const conn = await connect()
+// export const updateLastMessageTrip = async (
+//   uidTarget: string,
+//   uidPerson: string,
+//   message: string
+// ) => {
+//   const conn = await connect()
 
-  const update = new Date().toISOString().slice(0, 19).replace('T', ' ')
+//   const update = new Date().toISOString().slice(0, 19).replace('T', ' ')
 
-  await conn.query(
-    'UPDATE list_chats SET last_message = ?, updated_at = ? WHERE source_uid = ? AND target_uid = ?',
-    [message, update, uidPerson, uidTarget]
-  )
+//   await conn.query(
+//     'UPDATE list_chats SET last_message = ?, updated_at = ? WHERE source_uid = ? AND target_uid = ?',
+//     [message, update, uidPerson, uidTarget]
+//   )
 
-  conn.end()
-}
+//   conn.end()
+// }
 
-export const addNewMessageTrip = async (
-  uidSource: string,
-  uidTargetTrip: string,
-  message: string
-) => {
-  const conn = await connect()
-  await conn.query(
-    'INSERT INTO trip_messages (uid_message_trip, soure_uid, target_trip_uid, message) VALUE (?,?,?,?)',
-    [uuidv4(), uidSource, uidTargetTrip, message]
-  )
+// export const addNewMessageTrip = async (
+//   uidSource: string,
+//   uidTargetTrip: string,
+//   message: string
+// ) => {
+//   const conn = await connect()
+//   await conn.query(
+//     'INSERT INTO trip_messages (uid_message_trip, soure_uid, target_trip_uid, message) VALUE (?,?,?,?)',
+//     [uuidv4(), uidSource, uidTargetTrip, message]
+//   )
 
-  conn.end()
-}
+//   conn.end()
+// }
 
 export const getAllMessagesById = async (
   req: Request,
@@ -855,20 +828,20 @@ export const getLocationAllMemberTripById = async (
       lng: leader?.lng
     } 
 
-    const memembersTemp = members.map((member: IMemberLocation) => {
+    const membersTemp = members.map((member: IMemberLocation) => {
         const locationMember: Location = {
           lat: member?.lat ?? 0,
           lng: member?.lng ?? 0
         }
         const distance = haversine(locationLeader,locationMember);
-        if(distance > 1.5) {
+        if(distance > 150 && distance <= 200) {
           return {
             ...member,
             type: 'danger',
             message: "Lạc nhóm",
           }
         }
-        if(distance > 0.7 && distance <= 1.5) {
+        if(distance > 200) {
           return {
             ...member,
             type: 'warning',
@@ -889,13 +862,16 @@ export const getLocationAllMemberTripById = async (
       resp: true,
       message: 'Get all location member trip',
       leader,
-      memembersTemp,
+      members: membersTemp,
+      mockData: mockData.sort((a,b) => b.level - a.level),
     })
+    
     return res.json({
       resp: true,
       message: 'Get all location member trip',
       leader,
-      memembersTemp,
+      members: membersTemp,
+      mockData : mockData.sort(item => item.level - item.level),
     })
   } catch (err) {
     return res.status(500).json({

@@ -556,11 +556,11 @@ export const deleteFollowers = async (req: Request, res: Response): Promise<Resp
 
 export const updateOnlineUser = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id
+
     const conn = await connect()
 
     await conn.query('UPDATE users SET is_online = true WHERE person_uid = ?', [
-      id,
+      req.idPerson,
     ])
 
     conn.end()
@@ -579,12 +579,12 @@ export const updateOnlineUser = async (req: Request, res: Response) => {
 export const updateOfflineUser = async (req: Request, res: Response) => {
 
     try {
-        const id = req.params.id
             const conn = await connect()
-
+            console.log(req.idPerson);
+            
             await conn.query(
               'UPDATE users SET is_online = false WHERE person_uid = ?',
-              [id]
+              [req.idPerson]
             )
 
             conn.end()

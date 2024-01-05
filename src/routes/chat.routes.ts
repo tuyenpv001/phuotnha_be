@@ -6,5 +6,7 @@ const router = Router();
 
     router.get('/chat/get-list-chat-by-user', verifyToken, chat.getListMessagesByUser );
     router.get('/chat/get-all-message-by-user/:from', verifyToken, chat.getAllMessagesByUser );
-
+    
+    router.get('/chat/get-list-chat-by-trip', verifyToken, chat.getListMessagesByTrip );
+    router.get('/chat/get-all-message-by-trip/:from', verifyToken, chat.getAllMessagesByTrip );
 export default router;
