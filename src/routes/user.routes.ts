@@ -20,6 +20,7 @@ const router = Router();
     router.put('/user/change-account-privacy', verifyToken, user.changeAccountPrivacy );
 
     router.get('/user/get-search-user/:username', verifyToken, user.getSearchUser );
+    router.get('/user/search-by-keyword', verifyToken, user.getSearchByKeyword );
     router.get('/user/get-another-user-by-id/:idUser', verifyToken, user.getAnotherUserById );
     router.post('/user/add-new-friend', verifyToken, user.AddNewFollowing );
     router.post('/user/accept-follower-request', verifyToken, user.AcceptFollowerRequest );

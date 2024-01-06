@@ -49,11 +49,11 @@ export const socketChatMessages = ( io: Server ) => {
         client.on('start-trip', async payload => {
           console.log("start trip:",payload)
 
-          // await InsertListChat(payload.from, payload.to)
+          await InsertListChat(payload.from, payload.to)
 
-          // await updateLastMessage(payload.to, payload.from, payload.message)
+          await updateLastMessage(payload.to, payload.from, payload.message)
 
-        //   await addNewMessageTrip(payload.from, payload.to, payload.message)
+          await addNewMessageTrip(payload.from, payload.to, payload.message)
           console.log("Start trip");
           
 

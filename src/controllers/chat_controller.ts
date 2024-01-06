@@ -123,13 +123,13 @@ export const addNewMessage = async ( uidSource: string, uidTarget: string, messa
 
     conn.end();
 }
-export const addNewMessageTrip = async ( uidSource: string, uidTarget: string, message: string ) => {
+export const addNewMessageTrip = async ( userId: string, tripId: string, message: string ) => {
 
     const conn = await connect();
 // `trip_messages`(`uid_message_trip`, `soure_uid`, `target_trip_uid`, `message`
     await conn.query(
       'INSERT INTO trip_messages (uid_message_trip, source_uid, target_trip_uid, message) VALUE (?,?,?,?)',
-      [uuidv4(), uidSource, uidTarget, message]
+      [uuidv4(), userId, tripId, message]
     )
 
     conn.end();
