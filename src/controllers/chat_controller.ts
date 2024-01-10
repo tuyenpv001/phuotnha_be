@@ -161,6 +161,32 @@ export const getAllMessagesByUser = async (req: Request, res: Response): Promise
 
 }
 
+export const getCallByUser = async (req: Request, res: Response): Promise<Response> => {
+
+    try {
+        const conn = await connect();
+        const messagesdb = await conn.query<RowDataPacket[]>(
+          `SELECT * FROM call_video WHERE uid = ?`,
+          [req.params.id]
+        )
+
+        conn.end();
+
+        return res.json({
+            resp: true,
+            message: 'Get call by user',
+            caller: messagesdb[0][0]
+        });
+
+    } catch(err) {
+        return res.status(500).json({
+            resp: false,
+            message: err
+        });
+    }
+
+}
+
 
 export const getAllMessagesByTrip = async (req: Request, res: Response): Promise<Response> => {
 
@@ -193,6 +219,27 @@ export const getAllMessagesByTrip = async (req: Request, res: Response): Promise
 }
 
 
+//  {isCalling: true, callerId: 88fdc431-9c21-481f-823c-c0942d308249, callerName: tuyenpv, callerAvatar: avatar-default.png, receiverId: bd89e386-abfc-4065-9b00-3f64ec4c9c84, receiverName: Văn Hào, receiverAvatar: avatar-default.png, channelId: bd89e386-abfc-4065-9b00-3f64ec4c9c8488fdc431-9c21-481f-823c-c0942d308249, channelName: bd89e386-abfc-4065-9b00-3f64ec4c9c8488fdc431-9c21-481f-823c-c0942d308249}
+export const addNewCalling = async (
+    call : ICalling
+) => {
+  const conn = await connect()
+  await conn.query(
+    'INSERT INTO call_video (uid,caller_uid,receiver_id,call_name,receiver_name,caller_avatar,receiver_avatar,channel_id,channel_name,is_disabled) VALUE (?,?,?,?,?,?,?,?,?,?)',
+    [uuidv4(),call.callerId,call.receiverId,call.callerName,call.receiverName,call.callerAvatar,call.receiverAvatar,call.channelId,call.channelName,call.isDisabled]
+  )
+  conn.end()
+}
 
-
+export interface ICalling {
+  isDisabled: boolean
+  callerId: string
+  callerName: string
+  callerAvatar: string
+  receiverId: string
+  receiverName: string
+  receiverAvatar: string
+  channelId: string
+  channelName: string
+}
 

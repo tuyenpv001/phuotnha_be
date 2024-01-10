@@ -19,7 +19,7 @@ export const login = async ( req: Request, res: Response): Promise<Response> => 
         
         // Check is exists Email on database 
         const [verifyUserdb] = await conn.query<RowDataPacket[0]>('SELECT email, passwordd, email_verified FROM users WHERE email = ?', [email]);
-        console.log(verifyUserdb);
+        // console.log(verifyUserdb);
         
         if(verifyUserdb.length == 0){
             return res.status(401).json({
@@ -104,7 +104,7 @@ const resendCodeEmail = async (email: string): Promise<void> => {
 
     await conn.query('UPDATE users SET token_temp = ? WHERE email = ?', [ randomNumber, email ]);
 
-    // await sendEmailVerify('', email, `<h1> Social Frave </h1><hr> <b>${ randomNumber } </b>`);
+    // await sendEmailVerify('', email, `<h1> Phượt Nha </h1><hr> <b>${ randomNumber } </b>`);
 
     conn.end();
 

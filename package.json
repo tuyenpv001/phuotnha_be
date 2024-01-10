@@ -9,7 +9,8 @@
     "start-dev": "nodemon ./dist/index",
     "dev": "nodemon ./dist/index",
     "server": "nodemon -r src/index.ts",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "phuotnha": "npm run build && npm run start-dev"
   },
   "author": "TuyenPV",
   "license": "ISC",
