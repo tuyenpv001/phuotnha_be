@@ -99,17 +99,28 @@ export const savePostByUser = async (req: Request, res: Response): Promise<Respo
 
     try {
 
-        const { post_uid }: ISavePost = req.body;
+        const { post_uid, type }: ISavePost = req.body;
 
         const conn = await connect();
 
-        await conn.query('INSERT INTO post_save(post_save_uid, post_uid, person_uid) VALUE (?,?,?)', [ uuidv4(), post_uid, req.idPerson]);
-
+     
+        if (type === 'save') {
+              await conn.query(
+                'INSERT INTO post_save(post_save_uid, post_uid, person_uid) VALUE (?,?,?)',
+                [uuidv4(), post_uid, req.idPerson]
+              )
+        }
+        if (type === 'unsave') {
+           await conn.query(
+             'DELETE FROM post_save WHERE post_uid = ? AND person_uid = ?',
+             [post_uid, req.idPerson]
+           )
+        }
         conn.end();
 
         return res.json({
             resp: true,
-            message: 'Posted save'
+            message: 'Success'
         });
 
     } catch(err) {

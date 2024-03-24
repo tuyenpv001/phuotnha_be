@@ -7,8 +7,8 @@ const router = Router();
 
     router.post('/user', user.createUser );
     router.get('/user/get-User-By-Id', verifyToken, user.getUserById );
-    router.put('/user/status-online/:id', verifyToken, user.updateOnlineUser);
-    router.put('/user/status-offline/:id', verifyToken, user.updateOfflineUser);
+    router.put('/user/status-online', verifyToken, user.updateOnlineUser);
+    router.put('/user/status-offline', verifyToken, user.updateOfflineUser);
     router.put('/user/location', verifyToken, user.updateLocationUser);
     router.get('/user/profile', verifyToken, user.getProfileUser );
     router.get('/user/verify-email/:code/:email', user.verifyEmail );
@@ -20,6 +20,7 @@ const router = Router();
     router.put('/user/change-account-privacy', verifyToken, user.changeAccountPrivacy );
 
     router.get('/user/get-search-user/:username', verifyToken, user.getSearchUser );
+    router.get('/user/search-by-keyword', verifyToken, user.getSearchByKeyword );
     router.get('/user/get-another-user-by-id/:idUser', verifyToken, user.getAnotherUserById );
     router.post('/user/add-new-friend', verifyToken, user.AddNewFollowing );
     router.post('/user/accept-follower-request', verifyToken, user.AcceptFollowerRequest );

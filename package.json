@@ -4,11 +4,13 @@
   "description": "Phuotnha",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p . -w",
     "start": "npm run build && node dist/index.js",
+    "start-dev": "nodemon ./dist/index",
     "dev": "nodemon ./dist/index",
     "server": "nodemon -r src/index.ts",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "phuotnha": "npm run build && npm run start-dev"
   },
   "author": "TuyenPV",
   "license": "ISC",

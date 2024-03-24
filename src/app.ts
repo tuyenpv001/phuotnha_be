@@ -12,6 +12,7 @@ import routesChat from './routes/chat.routes';
 import routesTrip from './routes/trip.routes';
 import { socketChatMessages } from './sockets/chat_socket';
 import { socketChatMessagesTrip } from './sockets/trip_chat_socket';
+import { socketTripStarting } from './sockets/trip_start';
 
 
 export class App {
@@ -65,6 +66,8 @@ export class App {
 
         const io = new ServerSocket(this.httpServer);
         socketChatMessages(io);
+        socketTripStarting(io);
+        // socketChatMessagesTrip(io)
         // socketChatMessagesTrip(io);
 
     }

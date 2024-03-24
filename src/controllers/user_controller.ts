@@ -338,6 +338,38 @@ export const getSearchUser = async (req: Request, res: Response): Promise<Respon
     }
 
 }
+export const getSearchByKeyword = async (req: Request, res: Response): Promise<Response> => {
+
+    try {
+
+        const conn = await connect();
+        const { keyword} = req.query;
+        console.log(keyword);
+        
+        const userdb = await conn.query<RowDataPacket[]>(
+          `CALL SP_SEARCH_BY_KEYWORD(?);`,
+          [keyword]
+        )
+
+        conn.end();
+            console.log(userdb[0][0], userdb[0][1]);
+            
+        return res.json({
+            resp: true,
+            message: 'Search by keyword',
+            users: userdb[0][0],
+            trips: userdb[0][1],
+            posts: userdb[0][2]
+        });
+
+    } catch(err) {
+        return res.status(500).json({
+            resp: false,
+            message: err
+        });
+    }
+
+}
 
 export const getAnotherUserById = async (req: Request, res: Response): Promise<Response> => {
 
@@ -556,11 +588,11 @@ export const deleteFollowers = async (req: Request, res: Response): Promise<Resp
 
 export const updateOnlineUser = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id
+
     const conn = await connect()
 
     await conn.query('UPDATE users SET is_online = true WHERE person_uid = ?', [
-      id,
+      req.idPerson,
     ])
 
     conn.end()
@@ -579,12 +611,12 @@ export const updateOnlineUser = async (req: Request, res: Response) => {
 export const updateOfflineUser = async (req: Request, res: Response) => {
 
     try {
-        const id = req.params.id
             const conn = await connect()
-
+            console.log(req.idPerson);
+            
             await conn.query(
               'UPDATE users SET is_online = false WHERE person_uid = ?',
-              [id]
+              [req.idPerson]
             )
 
             conn.end()
@@ -608,13 +640,12 @@ export const updateLocationUser = async (req: Request, res: Response)=> {
     try {
       const { lat,lng }: ILocationUser = req.body
       const conn = await connect()
-      console.log(lat, lng)
+      console.log('============',lat, lng)
 
         await conn.query(
           'UPDATE users SET lat= ?, lng = ? WHERE person_uid = ?',
           [lat,lng,req.idPerson]
         )
-     
 
       conn.end()
 
@@ -623,6 +654,8 @@ export const updateLocationUser = async (req: Request, res: Response)=> {
         message: 'updated location',
       })
     } catch (err) {
+        console.log(err);
+        
       return res.status(500).json({
         resp: false,
         message: err,

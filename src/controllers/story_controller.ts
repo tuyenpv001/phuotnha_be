@@ -45,10 +45,13 @@ export const getAllStoryHome = async (req: Request, res: Response): Promise<Resp
     try {
 
         const conn = await connect();
+console.log(req.idPerson);
 
         const storiesdb = await conn.query<RowDataPacket[]>(`CALL SP_GET_ALL_STORIES_HOME(?);`, [req.idPerson]);
 
         conn.end();
+        console.log(storiesdb[0]);
+        
 
         return res.json({
             resp: true,

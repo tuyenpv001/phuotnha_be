@@ -7,6 +7,7 @@ export interface INewPost {
 
 export interface ISavePost {
     post_uid: string
+    type: 'save' | 'unsave'
 }
 export interface IUnSavePost {
   post_save_ui: string
