@@ -640,13 +640,12 @@ export const updateLocationUser = async (req: Request, res: Response)=> {
     try {
       const { lat,lng }: ILocationUser = req.body
       const conn = await connect()
-      console.log(lat, lng)
+      console.log('============',lat, lng)
 
         await conn.query(
           'UPDATE users SET lat= ?, lng = ? WHERE person_uid = ?',
           [lat,lng,req.idPerson]
         )
-     
 
       conn.end()
 
@@ -655,6 +654,8 @@ export const updateLocationUser = async (req: Request, res: Response)=> {
         message: 'updated location',
       })
     } catch (err) {
+        console.log(err);
+        
       return res.status(500).json({
         resp: false,
         message: err,

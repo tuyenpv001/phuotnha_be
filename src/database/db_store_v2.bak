@@ -1,0 +1,597 @@
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ADD_NEW_STORY`(IN `IDSTORY` VARCHAR(100), IN `IDUSER` VARCHAR(100), IN `IDMEDIASTORY` VARCHAR(100), IN `MEDIA` VARCHAR(150))
+BEGIN
+	INSERT INTO stories (uid_story, user_uid) VALUE (IDSTORY,IDUSER);
+	INSERT INTO media_story(uid_media_story, media, story_uid) VALUE (IDMEDIASTORY, MEDIA, IDSTORY);
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ALL_MESSAGE_BY_TRIP`(IN `ID_USER` VARCHAR(100), IN `ID_TRIP` VARCHAR(100))
+BEGIN	
+	SELECT * FROM trip_messages me
+	WHERE me.target_trip_uid = ID_TRIP
+	ORDER BY me.created_at DESC
+	LIMIT 30;  
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_ALL_MESSAGE_BY_USER`(IN `UIDFROM` VARCHAR(100), IN `UIDTO` VARCHAR(100))
+BEGIN	
+	SELECT * FROM messages me
+	WHERE me.source_uid = UIDFROM AND me.target_uid = UIDTO || me.source_uid = UIDTO AND me.target_uid = UIDFROM
+	ORDER BY me.created_at DESC
+	LIMIT 30;  
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_AUTO_UPDATE_ACHIVEMENT`(IN `ID_USER` VARCHAR(100))
+BEGIN
+SET @countTrips = 0;
+SET @countRate = 0.0;
+
+SELECT  @countTrips := COUNT(trips.uid) from trips WHERE trips.user_uid = ID_USER;
+SELECT  @countRate := AVG(trip_members.trip_rate) from trips,trip_members WHERE trips.user_uid = ID_USER AND trip_members.trip_uid = trips.uid;
+
+IF @countTrips > 20 AND @countRate >= 4.5 THEN
+    UPDATE person SET person.achievement = 'E' WHERE person.uid = ID_USER;
+   ELSEIF @countTrips > 15 AND @countRate >= 3.5 THEN
+	UPDATE person SET person.achievement = 'D' WHERE person.uid = ID_USER;
+   ELSEIF @countTrips > 10 AND @countRate >= 2.5 THEN
+	UPDATE person SET person.achievement = 'C' WHERE person.uid = ID_USER;
+   ELSEIF @countTrips > 7 AND @countRate >= 1.5 THEN
+	UPDATE person SET person.achievement = 'B' WHERE person.uid = ID_USER;
+   ELSEIF @countTrips > 5 AND @countRate >= 0 THEN
+	UPDATE person SET person.achievement = 'A' WHERE person.uid = ID_USER;
+   ELSE
+     UPDATE person SET person.achievement = 'O' WHERE person.uid = ID_USER;
+   END IF;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_CHECK_DUPLICATE_TRIP`(IN `ID_USER` VARCHAR(100), IN `DATE_START` DATETIME, IN `DATE_END` DATETIME)
+BEGIN
+SELECT COUNT(trips.uid) as countTripCreated FROM trips
+WHERE trips.user_uid = ID_USER
+ AND ((trips.trip_date_start BETWEEN DATE_START AND DATE_END)
+ OR (trips.trip_date_end BETWEEN DATE_START AND DATE_END)
+ OR (DATE_START BETWEEN trips.trip_date_start AND trips.trip_date_end)
+ OR (DATE_END BETWEEN trips.trip_date_start AND trips.trip_date_end)
+);
+
+SELECT COUNT(trip_members.uid) as countTripJoined FROM trip_members
+INNER JOIN trips ON trips.uid = trip_members.trip_uid
+WHERE trip_members.person_uid = ID_USER
+  AND ((trips.trip_date_start BETWEEN DATE_START AND DATE_END)
+ OR (trips.trip_date_end BETWEEN DATE_START AND DATE_END)
+ OR (DATE_START BETWEEN trips.trip_date_start AND trips.trip_date_end)
+ OR (DATE_END BETWEEN trips.trip_date_start AND trips.trip_date_end)
+ );
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_DELETE_TRIP_BY_ID`(IN `ID_TRIP` VARCHAR(100))
+BEGIN
+
+DELETE FROM trip_save WHERE trip_save.trip_uid = ID_TRIP;
+DELETE FROM trip_members WHERE trip_members.trip_uid = ID_TRIP;
+DELETE FROM trip_schedule WHERE trip_schedule.trip_uid = ID_TRIP;
+DELETE FROM trip_images WHERE trip_images.trip_uid = ID_TRIP;
+DELETE FROM trip_recommend WHERE trip_recommend.trip_uid = ID_TRIP;
+DELETE FROM trip_messages WHERE trip_messages.target_trip_uid = ID_TRIP;
+DELETE FROM trips WHERE trips.uid = ID_TRIP;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_FOLLOWERS`(IN `IDUSER` VARCHAR(100))
+BEGIN
+	SELECT f.uid AS idFollower, f.followers_uid AS uid_user, f.date_followers, u.username, p.fullname, p.image AS avatar FROM followers f
+	INNER JOIN users u ON f.followers_uid = u.person_uid
+	INNER JOIN person p ON u.person_uid = p.uid
+	WHERE f.person_uid = IDUSER;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_FOLLOWING`(IN `IDUSER` VARCHAR(100))
+BEGIN
+	SELECT f.uid AS uid_friend, f.friend_uid AS uid_user, f.date_friend, u.username, p.fullname, p.image AS avatar 
+	FROM friends f
+	INNER JOIN users u ON f.friend_uid = u.person_uid
+	INNER JOIN person p ON u.person_uid = p.uid
+	WHERE f.person_uid = IDUSER;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_MESSAGE_BY_TRIP`(IN `IDUSER` VARCHAR(100), IN `ID_TRIP` VARCHAR(100))
+BEGIN
+SELECT trip_messages.uid_message_trip,trip_messages.source_uid,trip_messages.target_trip_uid,trip_messages.message, u.username, p.image AS avatar
+	FROM trip_messages
+	INNER JOIN users u ON trip_messages.source_uid = u.person_uid
+	INNER JOIN person p ON u.person_uid = p.uid
+ 	WHERE trip_messages.source_uid = IDUSER AND trip_messages.target_trip_uid = ID_TRIP
+ 	ORDER BY trip_messages.updated_at ASC;
+    
+    END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_MESSAGE_BY_USER`(IN `IDUSER` VARCHAR(100))
+BEGIN
+	SELECT ls.uid_list_chat, ls.source_uid, ls.target_uid, ls.last_message, ls.updated_at, p.fullname as username, p.image AS avatar
+	FROM list_chats ls
+	INNER JOIN users u ON ls.target_uid = u.person_uid
+	INNER JOIN person p ON u.person_uid = p.uid
+ 	WHERE ls.source_uid = IDUSER
+ 	ORDER BY ls.updated_at ASC;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_POSTS_FOR_SEARCH`(IN `ID` VARCHAR(100))
+BEGIN
+	SELECT img.post_uid AS post_uid, pos.is_comment, pos.type_privacy, pos.created_at, pos.person_uid, ANY_VALUE(username) AS username, per.image AS avatar, GROUP_CONCAT( DISTINCT img.image ) images  
+	FROM images_post img
+	INNER JOIN posts pos  ON img.post_uid = pos.uid
+	INNER JOIN users us ON us.person_uid = pos.person_uid
+	INNER JOIN person per ON per.uid = pos.person_uid
+	WHERE pos.person_uid <> ID AND pos.type_privacy = 1
+	GROUP BY img.post_uid
+	ORDER BY pos.uid DESC;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_POSTS_HOME`(IN `ID` VARCHAR(100))
+BEGIN
+SELECT  pos.uid AS post_uid, pos.is_comment, pos.type_privacy,pos.description ,pos.created_at, 
+	(SELECT COUNT(co.post_uid) FROM comments co WHERE co.post_uid = pos.uid ) AS count_comment,
+	(SELECT COUNT(li.post_uid) FROM likes li WHERE li.post_uid = pos.uid ) AS count_likes,
+    (SELECT COUNT(li.user_uid) FROM likes li WHERE li.user_uid = ID AND li.post_uid = pos.uid )AS is_like,
+    (SELECT images_post.image FROM images_post WHERE post_uid = images_post.post_uid LIMIT 1) as images,
+        (SELECT COUNT(post_save.post_save_uid) FROM post_save WHERE post_save.person_uid = ID AND post_save.post_uid = pos.uid )AS is_save,
+     pos.person_uid, per.fullname AS username, per.is_leader,
+	per.image AS avatar
+	FROM posts pos
+    LEFT JOIN person per ON pos.person_uid = per.uid
+	ORDER BY pos.created_at DESC;
+    END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_POST_BY_USER`(IN `ID` VARCHAR(100))
+BEGIN
+	SELECT img.post_uid AS post_uid, pos.is_comment, pos.type_privacy, pos.created_at, pos.person_uid, ANY_VALUE(username) AS username, 
+	per.image AS avatar, GROUP_CONCAT( DISTINCT img.image ) images, 
+	(SELECT COUNT(co.post_uid) FROM comments co WHERE co.post_uid = pos.uid ) AS count_comment,
+	(SELECT COUNT(li.post_uid) FROM likes li WHERE li.post_uid = pos.uid ) AS count_likes,
+	(SELECT COUNT(li.user_uid) FROM likes li WHERE li.user_uid = ID AND li.post_uid = pos.uid )AS is_like
+	FROM images_post img
+	INNER JOIN posts pos  ON img.post_uid = pos.uid
+	INNER JOIN comments co ON co.post_uid = pos.uid
+	INNER JOIN users us ON us.person_uid = pos.person_uid
+	INNER JOIN person per ON per.uid = pos.person_uid
+	WHERE per.uid = ID
+	GROUP BY img.post_uid, co.post_uid 
+	ORDER BY pos.created_at DESC;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_STORIES_HOME`(IN `IDUSER` VARCHAR(100))
+BEGIN
+SELECT s.uid_story, p.fullname as username, p.image AS avatar, COUNT(ms.story_uid) AS count_story,ms.media
+	FROM stories s
+	INNER JOIN users u ON s.user_uid = u.person_uid
+    INNER JOIN person p ON p.uid = u.person_uid
+	INNER JOIN media_story ms ON s.uid_story = ms.story_uid
+#	INNER JOIN friends f ON u.person_uid = f.friend_uid
+#	INNER JOIN person p ON p.uid = f.friend_uid
+#	WHERE f.person_uid =  IDUSER
+	GROUP BY s.uid_story, u.username, p.image
+    ORDER BY ms.created_at DESC
+    ;
+    END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_TRIP`(IN `ID` VARCHAR(100))
+BEGIN
+SELECT  trip.uid as trip_uid,trip.user_uid, trip.trip_title, trip.trip_description,trip.trip_from,trip.trip_to,trip.trip_date_start,
+    trip.trip_date_end,trip.trip_status,trip.trip_member,trip.created_at,
+     (
+        SELECT trip_image_url 
+        FROM trip_images 
+        WHERE trip_images.trip_uid = trip.uid 
+        LIMIT 1
+    ) as tripimages
+    , per.fullname, per.uid AS userID, per.is_leader, per.image,per.achievement as userAchievement,
+        (SELECT COUNT(trip_members.trip_uid) FROM trip_members WHERE trip_members.trip_uid = trip.uid) as totalMemberJoined,
+        (SELECT IF(totalMemberJoined = trip.trip_member OR trip.trip_status = "completed", 1,0)) as isClose,
+        (SELECT COUNT(*) from trip_members WHERE trip_members.person_uid = ID AND trip.uid = trip_members.trip_uid) as isJoined,
+          (SELECT IF(trip.user_uid = ID, 1,0)) as isOwner,
+           (SELECT AVG(person.score_prestige) from trip_members
+           	INNER JOIN person ON person.uid = trip_members.person_uid
+           	INNER JOIN trips ON trip_members.trip_uid = trips.uid
+           WHERE trips.uid = trip_members.trip_uid
+          ) as score
+    FROM trips trip
+    LEFT JOIN person per ON trip.user_uid =  per.uid
+    WHERE trip.trip_status = 'open'
+    ORDER BY trip.created_at DESC;
+ END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_TRIP_BY_USER`(IN `ID_USER` VARCHAR(100))
+BEGIN
+	SELECT trips.*, 
+    (SELECT trip_images.trip_image_url FROM trip_images WHERE trips.uid = trip_images.trip_uid LIMIT 1) AS image,
+    (SELECT COUNT(trip_members.uid) FROM trip_members WHERE trip_members.trip_uid = trips.uid) AS totalMemberJoined
+    FROM trips WHERE trips.user_uid = ID_USER;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_ALL_TRIP_SCHEDULE`(IN `ID_USER` VARCHAR(100))
+BEGIN
+SELECT  trip.uid as trip_uid,trip.trip_title,trip.trip_from,trip.trip_to,trip.trip_date_start,
+    trip.trip_date_end,trip.trip_status,trip.trip_member,trip.created_at,trip_images.trip_image_url as thumbnail,
+    person.fullname, person.image as avatar, person.achievement,
+        (SELECT COUNT(trip_members.trip_uid) FROM trip_members WHERE trip_members.trip_uid = trip.uid) as totalMemberJoined,
+        (SELECT IF(trip.user_uid = ID_USER, 1,0)) as isOwner
+    FROM trips trip
+    LEFT JOIN trip_images ON trip.uid = trip_images.trip_uid
+    LEFT JOIN trip_members ON trip.uid = trip_members.trip_uid
+    LEFT JOIN person ON  trip_members.person_uid = person.uid OR trip.user_uid = person.uid
+    WHERE trip.user_uid = ID_USER OR trip_members.person_uid =  ID_USER
+    GROUP BY trip_uid
+    ORDER BY trip.created_at DESC;
+ END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_COMMENTS_TRIP_BY_ID`(IN `ID_TRIP` VARCHAR(100))
+BEGIN
+SELECT trip_comment.uid,trip_comment.comment, person.fullname,person.achievement,person.is_leader,person.score_prestige,person.image as avatar
+FROM trip_comment 
+INNER JOIN person ON person.uid = trip_comment.person_uid
+WHERE trip_comment.trip_uid = ID_TRIP;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_COMMNETS_BY_UIDPOST`(IN `IDPOST` VARCHAR(100))
+BEGIN
+	SELECT co.uid, co.`comment`, co.is_like, co.created_at, co.person_uid, co.post_uid, u.username, p.image AS avatar FROM comments co
+	INNER JOIN users u ON co.person_uid = u.person_uid
+	INNER JOIN person p ON p.uid = co.person_uid
+	WHERE co.post_uid = IDPOST
+	ORDER BY co.created_at ASC; 
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_DETAIL_TRIP_ID`(IN `ID_TRIP` VARCHAR(100), IN `ID_USER` VARCHAR(100))
+BEGIN
+SELECT  trip.uid as trip_uid,trip.user_uid, trip.trip_title, trip.trip_description,trip.trip_from,trip.trip_to,trip.trip_date_start,
+    trip.trip_date_end,trip.trip_status,trip.trip_member,trip.created_at,
+   per.fullname, per.uid AS userID, per.is_leader, per.image,per.achievement as userAchievement,
+        (SELECT COUNT(trip_members.trip_uid) FROM trip_members WHERE trip_members.trip_uid = trip.uid) as totalMemberJoined,
+        (SELECT IF(totalMemberJoined = trip.trip_member OR trip.trip_status = "completed", 1,0)) as isClose,
+        (SELECT COUNT(*) from trip_members WHERE trip_members.person_uid = ID_USER AND trip.uid = trip_members.trip_uid) as isJoined,
+         (SELECT COUNT(*) from trip_save WHERE trip_save.person_uid = ID_USER AND trip.uid = trip_save.trip_uid) as isSaved,
+          (SELECT IF(trip.user_uid = ID_USER, 1,0)) as isOwner
+    FROM 
+    trips trip, person per WHERE trip.uid = ID_TRIP AND trip.user_uid =  per.uid;
+
+    SELECT trip_images.uid,trip_images.trip_image_url from trip_images WHERE trip_images.trip_uid = ID_TRIP;
+      SELECT * from trip_schedule WHERE trip_schedule.trip_uid = ID_TRIP;
+      SELECT person.fullname,person.image as avatar, person.achievement from trip_members,person WHERE trip_members.trip_uid = ID_TRIP
+      AND trip_members.person_uid = person.uid;
+ END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_DETAIL_TRIP_SCHEDULE`(IN `ID_TRIP` VARCHAR(100), IN `ID_USER` VARCHAR(100))
+BEGIN
+SELECT  trip.uid as trip_uid,trip.user_uid, trip.trip_title, trip.trip_description,trip.trip_from,trip.trip_to,trip.trip_date_start,
+    trip.trip_date_end,trip.trip_status,trip.trip_member,trip.created_at,
+   per.fullname, per.uid AS userID, per.is_leader, per.image,per.achievement as userAchievement,
+        (SELECT COUNT(trip_members.trip_uid) FROM trip_members WHERE trip_members.trip_uid = trip.uid) as totalMemberJoined,
+        (SELECT IF(totalMemberJoined = trip.trip_member OR trip.trip_status = "completed", 1,0)) as isClose,
+        (SELECT COUNT(*) from trip_members WHERE trip_members.person_uid = ID_USER AND trip.uid = trip_members.trip_uid) as isJoined,
+          (SELECT IF(trip.user_uid = ID_USER, 1,0)) as isOwner
+    FROM trips trip, person per WHERE trip.uid = ID_TRIP AND trip.user_uid =  per.uid;
+
+    SELECT trip_images.uid,trip_images.trip_image_url from trip_images WHERE trip_images.trip_uid = ID_TRIP;
+      SELECT * from trip_schedule WHERE trip_schedule.trip_uid = ID_TRIP;
+      SELECT person.fullname,person.image as avatar, person.achievement, trip_members.trip_role as role from trip_members,person WHERE trip_members.trip_uid = ID_TRIP
+      AND trip_members.person_uid = person.uid;
+ END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_LIST_POST_SAVED_BY_USER`(IN `ID` VARCHAR(100))
+BEGIN
+	SELECT ps.post_save_uid, ps.post_uid, ps.person_uid,ps.date_save, per.image AS avatar, per.fullname,GROUP_CONCAT( DISTINCT img.image ) images, po.description 
+    FROM post_save ps 
+	INNER JOIN posts po ON ps.post_uid = po.uid
+	INNER JOIN images_post img ON po.uid = img.post_uid
+	INNER JOIN person per ON per.uid = po.person_uid
+	INNER JOIN users us ON us.person_uid = ps.person_uid
+	where ps.person_uid = ID
+	GROUP BY ps.post_save_uid;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_LOCATION_ALL_MEMBER_BY_TRIP_ID`(IN `ID_TRIP` VARCHAR(100))
+BEGIN
+#GET LEADER
+SELECT users.lat, users.lng, person.image,person.fullname, 1 as isLeader FROM trips
+INNER JOIN users ON users.person_uid = trips.user_uid
+INNER JOIN person ON users.person_uid = person.uid
+WHERE trips.uid = ID_TRIP;
+
+#GET MEMBER
+SELECT users.lat, users.lng, person.image,person.fullname, 0 as isMember FROM trip_members
+INNER JOIN users ON users.person_uid = trip_members.person_uid
+INNER JOIN person ON users.person_uid = person.uid
+WHERE trip_members.trip_uid = ID_TRIP;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_MEMBERS_TRIP`(IN `ID_TRIP` VARCHAR(100))
+BEGIN
+SELECT trip_members.uid as trip_member_uid, trip_members.trip_uid,trip_members.person_uid,trip_members.trip_role as userRole,
+person.fullname,person.image as avatar, person.achievement, 0 as isMember,
+(SELECT trips.user_uid from trips where  trips.uid = ID_TRIP)  as trip_leader,
+(SELECT IF(person_uid = trip_leader, 1, 0)) as isPermissionChangeRole
+FROM trip_members
+LEFT JOIN person ON trip_members.person_uid = person.uid
+WHERE trip_members.trip_uid = ID_TRIP;
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_NOTIFICATION_BY_USER`(IN `ID` VARCHAR(100))
+BEGIN
+	SELECT noti.uid_notification, noti.type_notification, noti.created_at, noti.user_uid, u.username, noti.followers_uid, s.username AS follower, pe.image AS avatar, noti.post_uid 
+	FROM notifications noti
+	INNER JOIN users u ON noti.user_uid = u.person_uid
+	INNER JOIN users s ON noti.followers_uid = s.person_uid
+	INNER JOIN person pe ON pe.uid = s.person_uid
+	WHERE noti.user_uid = ID;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_POST_BY_IDPERSON`(IN `ID` VARCHAR(100))
+BEGIN
+	SELECT img.post_uid AS post_uid, pos.is_comment, pos.type_privacy, pos.created_at, GROUP_CONCAT( DISTINCT img.image ) images  
+	FROM images_post img
+	INNER JOIN posts pos  ON img.post_uid = pos.uid
+	WHERE pos.person_uid = ID
+	GROUP BY img.post_uid;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_POST_BY_ID_PERSON`(IN `ID` VARCHAR(100))
+BEGIN
+	SELECT pos.uid, pos.is_comment, pos.type_privacy, pos.created_at, GROUP_CONCAT( DISTINCT img.image ) images FROM images_post img
+	INNER JOIN posts pos  ON img.post_uid = pos.uid
+	WHERE pos.person_uid = ID
+	GROUP BY pos.uid;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_PROFILE_USER`(IN `ID_USER` VARCHAR(100))
+BEGIN
+SELECT person.fullname, person.image, person.cover,person.is_leader, person.achievement,users.email, users.username,
+	(SELECT COUNT(uid) FROM trips WHERE trips.user_uid = ID_USER) AS countTripCreated,
+    (SELECT COUNT(uid) FROM trip_members WHERE trip_members.person_uid = ID_USER) AS countTripJoined,
+    (SELECT COUNT(uid) FROM posts WHERE posts.person_uid = ID_USER) AS countPostCreated,
+    (SELECT COUNT(uid) FROM followers WHERE followers.person_uid = ID_USER) AS countUserFollowing,
+    (SELECT COUNT(uid) FROM followers WHERE followers.followers_uid = ID_USER) AS countUserFollower
+from person, users
+WHERE person.uid = ID_USER
+AND person.uid = users.person_uid;
+
+SELECT trips.uid as tripuid,trips.trip_title,
+	IF(ROUND(AVG(trip_members.trip_rate), 2) IS NULL, 0.0,ROUND(AVG(trip_members.trip_rate), 2)) as avgRate,
+COUNT(trip_members.person_uid) as memberJoined, COUNT(trip_members.trip_comment) as totalComment
+FROM trips 
+LEFT JOIN trip_members ON trips.uid = trip_members.trip_uid
+WHERE trips.user_uid= ID_USER
+GROUP BY tripuid;
+
+SELECT trip_images.uid as tripuid,trip_images.trip_image_url as tripImage
+FROM trips, trip_images 
+WHERE trips.user_uid = ID_USER 
+	AND trip_images.trip_uid = trips.uid;
+    
+SELECT images_post.uid as postuid, images_post.image postImage
+FROM posts,images_post
+WHERE posts.person_uid = ID_USER 
+	AND posts.uid = images_post.post_uid;
+
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_STORY_BY_USER`(IN `IDSTORY` VARCHAR(100))
+BEGIN
+	SELECT *
+	FROM media_story ms
+	WHERE ms.story_uid = IDSTORY;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_GET_USER_BY_ID`(IN `ID` VARCHAR(100))
+BEGIN
+	SELECT p.uid, p.fullname, p.phone, p.image, p.cover, p.birthday_date, p.created_at, u.username, u.description, u.is_private, u.is_online, u.email
+	FROM person p
+	INNER JOIN users u ON p.uid = u.person_uid
+	WHERE p.uid = ID AND p.state = 1;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_IS_FRIEND`(IN `UID` VARCHAR(100), IN `FRIEND` VARCHAR(100))
+BEGIN
+	SELECT COUNT(uid) AS is_friend FROM friends
+	WHERE person_uid = UID AND friend_uid = FRIEND
+	LIMIT 1;
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_IS_PENDING_FOLLOWER`(IN `UIDPERSON` VARCHAR(100), IN `UIDFOLLOWER` VARCHAR(100))
+BEGIN
+	SELECT COUNT(uid_notification) AS is_pending_follower FROM notifications
+	WHERE user_uid = UIDPERSON AND followers_uid = UIDFOLLOWER AND type_notification = '1';
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_REGISTER_USER`(IN `uidPerson` VARCHAR(100), IN `fullname` VARCHAR(100), IN `username` VARCHAR(50), IN `email` VARCHAR(100), IN `pass` VARCHAR(100), IN `uidUser` VARCHAR(100), IN `temp` VARCHAR(50))
+BEGIN
+	INSERT INTO person(uid, fullname, image,cover) VALUE (uidPerson, fullname, 'avatar-default.png', 'cover_default.jpg');
+	
+	INSERT INTO users(uid, username, email, passwordd, person_uid, token_temp, email_verified) VALUE (uidUser, username, email, pass, uidPerson, temp, 1);
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_SEARCH_BY_KEYWORD`(IN `keyword` VARCHAR(255))
+BEGIN
+
+SELECT person.uid AS uid, person.fullname AS name,person.image AS image, 'user' as type
+FROM person WHERE person.fullname LIKE CONCAT('%', keyword, '%')
+ORDER BY person.achievement DESC;
+
+SELECT trips.uid as uid, trips.trip_title as name,
+(SELECT trip_images.trip_image_url FROM trip_images WHERE trip_images.trip_uid = trips.uid LIMIT 1) as image,
+'trip' as type
+FROM trips WHERE trips.trip_title LIKE CONCAT('%',keyword , '%')
+ORDER BY trips.created_at DESC LIMIT 20;
+
+SELECT posts.uid as uid,posts.description as name,
+(SELECT images_post.image FROM images_post WHERE images_post.post_uid = posts.uid LIMIT 1) as image,
+'post' as type
+FROM posts WHERE posts.description LIKE CONCAT('%', keyword, '%') 
+ORDER BY posts.created_at DESC LIMIT 20
+;
+
+
+
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_SEARCH_USERNAME`(IN `USERNAMEE` VARCHAR(100))
+BEGIN
+	SELECT pe.uid, pe.fullname, pe.image AS avatar, us.username FROM person pe
+	INNER JOIN users us ON pe.uid = us.person_uid
+	WHERE us.username LIKE CONCAT('%', USERNAMEE, '%');
+END$$
+DELIMITER ;
+
+DELIMITER $$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `SP_UPDATE_ACHIVEMENT_USER`(IN `ID_USER` VARCHAR(100))
+BEGIN
+SET @countTripCreated := 0;
+SET @countTripCompleted := 0;
+SET @avgTripCompleted := 0.0;
+SET @tripHistoryCreated := 0;
+SET @countTripHistoryCompleted := 0;	
+SET @tripHistoryAvgRate:= 0.0;
+SET @dateHistory := '2023-12-30';
+SET @isExists := 0;
+SELECT COUNT(*) INTO @isExists FROM user_history WHERE user_history.person_uid = ID_USER;
+
+IF @isExists <> 0 THEN
+	BEGIN
+	SELECT user_history.count_trip_created INTO @tripHistoryCreated
+    FROM user_history WHERE user_history.person_uid = ID_USER;
+
+    SELECT user_history.avg_rate INTO @tripHistoryAvgRate
+    FROM user_history WHERE user_history.person_uid = ID_USER;
+    
+ 	SELECT user_history.count_trip_completed INTO @countTripHistoryCompleted
+    FROM user_history WHERE user_history.person_uid = ID_USER;
+    
+    SELECT COUNT(trips.uid) INTO @countTripCreated FROM trips 
+    WHERE trips.user_uid = ID_USER AND trips.created_at > @dateHistory;
+    
+    SELECT COUNT(trips.uid) INTO @countTripCompleted FROM trips 
+    WHERE trips.user_uid = ID_USER AND trips.trip_status = 'completed' AND trips.created_at > @dateHistory;
+    
+    SELECT IF(AVG(trip_members.trip_rate) IS NULL, 0, AVG(trip_members.trip_rate)) INTO @avgTripCompleted
+    FROM trip_members
+    INNER JOIN trips ON trips.uid = trip_members.trip_uid
+    WHERE trips.user_uid = ID_USER AND trips.created_at > @dateHistory  AND trip_members.trip_uid = trips.uid;
+    
+   # SELECT SUM(@tripHistoryCreated + @countTripCreated) INTO @countTripCreated;
+    #SELECT SUM(@tripHistoryAvgRate + @avgTripCompleted) INTO  @avgTripCompleted;
+   # SELECT SUM(@countTripHistoryCompleted + @countTripCompleted) INTO @countTripCompleted;
+    SET @countTripCreated = @tripHistoryCreated + @countTripCreated;
+    SET @avgTripCompleted = (@tripHistoryAvgRate + @avgTripCompleted) /2;
+    SET @countTripCompleted = @countTripHistoryCompleted + @countTripCompleted;
+    END;
+ELSE
+	BEGIN
+	SELECT COUNT(trips.uid) INTO @countTripCreated FROM trips 
+    WHERE trips.user_uid = ID_USER;
+	SELECT COUNT(trips.uid) INTO @countTripCompleted FROM trips 
+    WHERE trips.user_uid = ID_USER AND trips.trip_status = 'completed';
+    SELECT IF(AVG(trip_members.trip_rate) IS NULL, 0, AVG(trip_members.trip_rate)) INTO @avgTripCompleted
+    FROM trip_members
+    INNER JOIN trips ON trips.uid = trip_members.trip_uid
+    WHERE trips.user_uid = ID_USER AND trip_members.trip_uid = trips.uid;
+    END;
+END IF;
+
+IF @countTripCreated > 9 OR @countTripCompleted  BETWEEN 0 AND 3 
+   THEN  UPDATE person SET person.is_leader = 1, person.achievement = 'A' WHERE person.uid =  ID_USER;
+ELSEIF @countTripCreated > 10 AND @countTripCompleted >  3 AND @avgTripCompleted BETWEEN 2 AND 3.2
+   THEN  UPDATE person SET person.is_leader = 1, person.achievement = 'B' WHERE person.uid =  ID_USER;
+ELSEIF @countTripCreated > 15 AND @countTripCompleted >  5 AND @avgTripCompleted BETWEEN 3 AND 4.2
+   THEN UPDATE person SET person.is_leader = 1, person.achievement = 'C' WHERE person.uid =  ID_USER;
+ELSEIF @countTripCreated > 15 AND @countTripCompleted >  5 AND @avgTripCompleted BETWEEN 3 AND 4.2
+   THEN UPDATE person SET is_leader = 1, achievement = 'D' WHERE person.uid =  ID_USER;
+ELSEIF @countTripCreated > 10 AND @countTripCompleted >  10 AND @avgTripCompleted BETWEEN 4 AND 4.5
+   THEN UPDATE person SET person.is_leader = 1, person.achievement = 'E' WHERE person.uid =  ID_USER;
+END IF;  
+
+IF @avgTripCompleted BETWEEN 0 AND 2 
+	THEN UPDATE person SET person.limit = 50.00 WHERE person.uid = ID_USER;
+ELSEIF @avgTripCompleted BETWEEN 2.1 AND 3
+	THEN UPDATE person SET person.limit = 100.00 WHERE person.uid = ID_USER;
+END IF;
+
+IF @isExists <> 0
+THEN
+	INSERT INTO user_history 					(user_history.person_uid,user_history.count_trip_created,user_history.count_trip_completed,user_history.avg_rate,user_history.created_at)
+    VALUES (ID_USER,@countTripCreated, @countTripCompleted,@avgTripCompleted, NOW());
+ELSE
+    UPDATE user_history SET count_trip_created= @countTripCreated,count_trip_completed=@countTripCompleted,avg_rate=@avgTripCompleted,created_at= NOW() WHERE user_history.person_uid = ID_USER;
+END IF;
+
+END$$
+DELIMITER ;

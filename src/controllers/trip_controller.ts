@@ -4,7 +4,7 @@ import { connect } from '../database/connection';
 import { ILikePost, INewComment, IUidComment } from '../interfaces/post.interface';
 import { RowDataPacket } from 'mysql2';
 import { ICommentTrip, IJoinTrip, IMemberLocation, INewTrip, IRoleTrip, ISaveTrip, IStatusTrip, mockData } from '../interfaces/trip.interface';
-import { Location, haversine } from '../lib/haversine';
+import { Location, calculateDistances, calculateOneToMoreDistances, haversine } from '../lib/haversine';
 import { addNotification } from './notifications_controller';
 
 
@@ -25,11 +25,11 @@ export const createNewTrip = async (req: Request, res: Response): Promise<Respon
           'CALL SP_CHECK_DUPLICATE_TRIP(?,?,?)',
           [req.idPerson, trip_date_start, trip_date_end]
         )
-          console.log(checkMatch[0]);
-          console.log(checkMatch[0][0]);
-          console.log(checkMatch[0][1]);
-          console.log(checkMatch[0][0][0]?.countTripCreated)
-          console.log(checkMatch[0][1][0]?.countTripJoined)
+          // console.log(checkMatch[0]);
+          // console.log(checkMatch[0][0]);
+          // console.log(checkMatch[0][1]);
+          // console.log(checkMatch[0][0][0]?.countTripCreated)
+          // console.log(checkMatch[0][1][0]?.countTripJoined)
            if (
              checkMatch[0][0][0]?.countTripCreated !== 0 &&
              checkMatch[0][1][0]?.countTripJoined !== 0
@@ -271,6 +271,96 @@ export const getMemberTripById = async (
     })
   }
 }
+
+export const getCommentsById = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const conn = await connect()
+    const { id } = req.params
+    const postdb = await conn.query<RowDataPacket[]>(
+      `CALL SP_GET_COMMENTS_TRIP_BY_ID(?);`,
+      [id]
+    )
+console.log(postdb[0]);
+console.log(postdb[0][0]);
+
+    const imagesdb = postdb[0][0].testing
+
+    await conn.end()
+    // console.log(postdb)
+    return res.json({
+      resp: true,
+      message: 'Get comments trip',
+      comments: postdb[0][0],
+
+    })
+  } catch (err) {
+    return res.status(500).json({
+      resp: false,
+      message: err,
+    })
+  }
+}
+export const getCommentsCompletedById = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const conn = await connect()
+    const { id } = req.params
+    const postdb = await conn.query<RowDataPacket[]>(
+      `CALL SP_GET_COMMENTS_TRIP_COMPLETED_BY_ID(?);`,
+      [id]
+    )
+    console.log(postdb[0])
+    console.log(postdb[0][0])
+
+    const imagesdb = postdb[0][0].testing
+
+    await conn.end()
+    // console.log(postdb)
+    return res.json({
+      resp: true,
+      message: 'Get comments trip',
+      comments: postdb[0][0],
+    })
+  } catch (err) {
+    return res.status(500).json({
+      resp: false,
+      message: err,
+    })
+  }
+}
+
+
+export const getMarkersById = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const conn = await connect()
+    const { id } = req.params
+    const postdb = await conn.query<RowDataPacket[]>(
+      'SELECT * FROM trip_schedule WHERE trip_schedule.trip_uid = ?',
+      [id]
+    )
+    await conn.end()
+    // console.log(postdb)
+    return res.json({
+      resp: true,
+      message: 'Get comments trip',
+      markers: postdb[0],
+    })
+  } catch (err) {
+    return res.status(500).json({
+      resp: false,
+      message: err,
+    })
+  }
+}
+
 export const getDetailExtraTripById = async (
   req: Request,
   res: Response
@@ -296,6 +386,7 @@ export const getDetailExtraTripById = async (
       images: postdb[0][1],
       tripRecommends: postdb[0][2],
       tripMembers: postdb[0][3],
+      comments: postdb[0][4],
       imagesdb,
     })
   } catch (err) {
@@ -433,21 +524,77 @@ export const addRateTrip = async (
   res: Response
 ): Promise<Response> => {
   try {
-    const { trip_uid, trip_comment, trip_rate, trip_member_uid }: ICommentTrip =
+    const { trip_uid, trip_comment, trip_rate }: ICommentTrip =
       req.body
 
     const conn = await connect()
-
+    console.log(trip_uid,trip_comment,trip_rate, req.idPerson);
+    
     await conn.query(
-      'UPDATE trip_members SET trip_comment = ?, trip_rate = ? WHERE uid = ? AND trip_uid = ? AND person_uid = ? ',
-      [trip_comment,trip_rate,trip_member_uid ,trip_uid, req.idPerson]
+      'UPDATE trip_members SET trip_comment = ?, trip_rate = ? WHERE trip_uid = ? AND person_uid = ?',
+      [trip_comment,trip_rate as number,trip_uid, req.idPerson]
     )
 
     conn.end()
 
     return res.json({
       resp: true,
-      message: 'Joined Trip',
+      message: 'Rated Trip',
+    })
+  } catch (err) {
+    return res.status(500).json({
+      resp: false,
+      message: err,
+    })
+  }
+}
+export const addCommentTrip = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  try {
+    const { trip_uid, trip_comment }: ICommentTrip = req.body
+
+    console.log(trip_uid,trip_comment);
+    
+    const conn = await connect()
+
+    await conn.query(
+      'INSERT INTO trip_comment(trip_uid, person_uid, comment) VALUES (?,?,?)',
+      [trip_uid, req.idPerson, trip_comment]
+    )
+
+    conn.end()
+
+    return res.json({
+      resp: true,
+      message: 'Add comment Trip',
+    })
+  } catch (err) {
+    return res.status(500).json({
+      resp: false,
+      message: err,
+    })
+  }
+}
+
+export const addTripStart = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { trip_uid, trip_route }: {trip_uid: string, trip_route: string} =
+      req.body
+
+    const conn = await connect()
+
+    await conn.query(
+      'INSERT INTO `trip_start`(`trip_uid`, `trip_route`) VALUES (?,?)',
+      [trip_uid,trip_route]
+    )
+
+    conn.end()
+
+    return res.json({
+      resp: true,
+      message: 'Trip start added',
     })
   } catch (err) {
     return res.status(500).json({
@@ -814,69 +961,173 @@ export const getLocationAllMemberTripById = async (
   try {
     const conn = await connect()
     const { id } = req.params
+    const SAFE_DISTANCE = 300
+    const MARKER_DISTANCE = 150
     const result = await conn.query<RowDataPacket[]>(
       `CALL SP_GET_LOCATION_ALL_MEMBER_BY_TRIP_ID(?);`,
       [id]
     )
+    const markers = await conn.query<RowDataPacket[]>(
+      'SELECT * FROM trip_schedule WHERE trip_schedule.trip_uid = ?',
+      [id]
+    )
+    // console.log(markers[0]);
     
+    const routeByTripId = await conn.query<RowDataPacket[]>('SELECT * FROM trip_start WHERE trip_start.trip_uid = ?', [id]);
+    const dataTest = await conn.query<RowDataPacket[]>('SELECT * FROM mock_data WHERE mock_data.trip_uid = ?', [id]);
+    //Mock data user with route trip
+    let allMember = dataTest[0] as any[];
     const leader = result[0][0][0];
-    const members = result[0][1] as IMemberLocation[];
-    console.log(leader, members);
-    
-    const locationLeader : Location = {
-      lat: leader?.lat,
-      lng: leader?.lng
-    } 
+    const toats  = [] as any[];
 
-    const membersTemp = members.map((member: IMemberLocation) => {
-        const locationMember: Location = {
-          lat: member?.lat ?? 0,
-          lng: member?.lng ?? 0
-        }
-        const distance = haversine(locationLeader,locationMember);
-        if(distance > 150 && distance <= 200) {
-          return {
-            ...member,
-            type: 'danger',
-            message: "Lạc nhóm",
-          }
-        }
-        if(distance > 200) {
-          return {
-            ...member,
-            type: 'warning',
-            message: "Di chuyển xa nhóm",
-          }
-        }
+  
+    const distanceAllMemeber = calculateDistances(allMember).filter(item => item.distance * 1000 > SAFE_DISTANCE)
+    const memberIndexMax = allMember.sort((a, b) => b.index - a.index)[0];
+    console.log("=========== DISTANCE  =============");
+    console.log(distanceAllMemeber, );
+    console.log("=========== DISTANCE  =============");
+    
+    const membersTemp = allMember.map(item => {
+      const checkMemberExist = distanceAllMemeber.filter(
+        member =>
+          member.userId === item['user_id'] || member.userIdTo === item['user_id']
+      )
+      console.log(checkMemberExist);
+      
+      const distanceToMarkers = calculateOneToMoreDistances(
+        item,
+        markers[0]
+      ).filter(marker => marker.distance * 1000 <= MARKER_DISTANCE)
+      
+        toats.push(...distanceToMarkers);
+      
+      if(checkMemberExist.some(item => item.distance * 1000 > SAFE_DISTANCE) && item['user_id'] !== memberIndexMax['user_id']){
         return {
-          ...member,
-          type: 'normal',
-          message: 'An toàn'
+          ...item,
+          level: 3,
+          type: 'danger',
+          message: `${item.fullname} hãy di chuyển nhanh hơn để bắt kịp mọi người nhé`
         }
+      }
+      if(checkMemberExist.some(item => item.distance * 1000 > SAFE_DISTANCE) && item['user_id'] === memberIndexMax['user_id']){
+        return {
+          ...item,
+          level: 2,
+          type: 'warning',
+          message: `${item.fullname} di chuyển chậm lại để chờ mọi người nhé.`
+        }
+      }
+      return {
+        ...item,
+        level: 1,
+        type: 'normal',
+        message: 'An toàn'
+      }
     })
-    
 
+ 
     await conn.end()
-    // console.log(postdb)
-    console.log({
-      resp: true,
-      message: 'Get all location member trip',
-      leader,
-      members: membersTemp,
-      mockData: mockData.sort((a,b) => b.level - a.level),
-    })
-    
+    // console.log('================== MOCK DATA ====================');
+    // console.log(membersTemp);
+    // console.log('================== MOCK DATA ====================');
+  
     return res.json({
       resp: true,
       message: 'Get all location member trip',
       leader,
       members: membersTemp,
-      mockData : mockData.sort(item => item.level - item.level),
+      mockData: membersTemp.sort((a,b) => b.level - a.level),
+      toats,
     })
   } catch (err) {
+    console.log(err);
+    
     return res.status(500).json({
       resp: false,
       message: err,
     })
   }
+}
+
+
+// Hàm giả lập cập nhật vị trí người dùng
+function updateSingleUserLocation(routePoints : any[],users:  any[],userIndex:number, routeIndex:number) {
+  users[userIndex] = routePoints[routeIndex]
+}
+
+// Hàm giả lập cập nhật tất cả vị trí người dùng
+function updateUserLocations(routePoints: any[], users: any[]) {
+  let routeIndex = users[0].Lat - 10 // Bắt đầu từ vị trí của người dùng 0
+
+  // Cập nhật vị trí người dùng
+  for (let i = 0; i < users.length; i++) {
+    updateSingleUserLocation(routePoints, users, i, Math.floor(routeIndex))
+    routeIndex += 0.1 // Tăng index của routePoints
+  }
+
+
+}
+
+export const getLocationAllMemberTripByIdSocket = async (
+ id: string
+) => {
+  // try {
+    const conn = await connect()
+
+    const result = await conn.query<RowDataPacket[]>(
+      `CALL SP_GET_LOCATION_ALL_MEMBER_BY_TRIP_ID(?);`,
+      [id]
+    )
+
+    const routeByTripId = await conn.query<RowDataPacket[]>(
+      'SELECT * FROM trip_start WHERE trip_start.trip_uid = ?',
+      [id]
+    )
+    const dataTest = await conn.query<RowDataPacket[]>(
+      'SELECT * FROM mock_data WHERE mock_data.trip_uid = ?',
+      [id]
+    )
+    const routePolyLine = JSON.parse(routeByTripId[0][0].trip_route).path
+    let allMember = dataTest[0] as any[]
+    // const leader = result[0][0][0]
+    const members = result[0][1] as IMemberLocation[]
+    updateUserLocations(routePolyLine, members)
+
+    allMember = allMember.map((item, index: number) => {
+      // if(item.index == 100 ) {
+      //   return {
+      //     ...item,
+      //     index: item.index + 2,
+      //   }
+      // }
+      return {
+        ...item,
+        index:
+          routePolyLine.length === item.index ||
+          item.index > routePolyLine.length
+            ? routePolyLine.length - 1
+            : item.index + randomFromOneToFive(),
+      }
+    })
+    
+    // console.log(allMember);
+    
+    for (let i = 0; i < allMember.length; i++) {
+      const index = allMember[i].index
+      const userId = allMember[i]['user_id']
+      const lat = routePolyLine[index][0]
+      const lng = routePolyLine[index][1]
+      await conn.query(
+        'UPDATE mock_data SET mock_data.index = ?, lat = ?, lng = ? WHERE user_id = ? ',
+        [index, lat, lng,userId]
+      )
+    }
+
+    await conn.end()
+  
+}
+
+
+function randomFromOneToFive(): number {
+  return Math.floor(Math.random() * 5) + 1
 }

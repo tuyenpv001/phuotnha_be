@@ -48,7 +48,24 @@ const router = Router();
     router.post('/trip/save-trip', verifyToken, trip.saveAndUnSaveTripByUser) 
     router.post('/trip/add-role-user', verifyToken, trip.addRoleForUserOfTrip)
     router.post('/trip/update-status', verifyToken, trip.updateStatusOfTrip)
-    router.post('/trip/rate-trip', verifyToken, trip.addRateTrip)
+    router.put('/trip/rate-trip', verifyToken, trip.addRateTrip)
+    router.post('/trip/comment', verifyToken, trip.addCommentTrip)
+    router.post('/trip/trip-start',verifyToken ,trip.addTripStart)
+    router.get(
+      '/trip/comments/:id',
+      verifyToken,
+      trip.getCommentsById
+    )
+    router.get(
+      '/trip/comments-completed/:id',
+      verifyToken,
+      trip.getCommentsCompletedById
+    )
+    router.get(
+      '/trip/markers/:id',
+      verifyToken,
+      trip.getMarkersById
+    )
     router.get(
       '/trip/get-list-saved-trips',
       verifyToken,

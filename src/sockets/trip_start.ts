@@ -9,6 +9,7 @@ import {
   updateOnlineUser,
 } from '../controllers/user_controller'
 import { verifyTokenSocket } from '../middleware/verify_token'
+import { getLocationAllMemberTripById, getLocationAllMemberTripByIdSocket } from '../controllers/trip_controller'
 
 export const socketTripStarting = (io: Server) => {
   const nameSpaceChat = io.of('/socket-trip-starting')
@@ -28,11 +29,10 @@ export const socketTripStarting = (io: Server) => {
 
     client.join(uidPerson)
 
-    client.on('trip-start', async payload => {
-
-
+    client.on('start-trip', async payload => {
       console.log('start trip:', payload)
-      console.log('Start trip')
+      await getLocationAllMemberTripByIdSocket(payload.tripId);
+      nameSpaceChat.emit('start-trip', payload);
     })
 
     client.on('disconnect', async _ => {

@@ -66,6 +66,7 @@ export class App {
 
         const io = new ServerSocket(this.httpServer);
         socketChatMessages(io);
+        socketTripStarting(io);
         // socketChatMessagesTrip(io)
         // socketChatMessagesTrip(io);
 

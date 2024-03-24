@@ -52,7 +52,7 @@ export const login = async ( req: Request, res: Response): Promise<Response> => 
         const { uid } = uidPersondb[0][0];
 
         let token = generateJsonWebToken( uid );
-        await conn.query('CALL SP_AUTO_UPDATE_ACHIVEMENT(?)', [uid]);
+        await conn.query('CALL SP_UPDATE_ACHIVEMENT_USER(?)', [uid])
         await conn.query(
           'UPDATE users SET is_online = true WHERE person_uid = ?',
           [uid]
